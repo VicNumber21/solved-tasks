@@ -1,0 +1,12 @@
+{
+  "name": "node-playground",
+  "version": "1.0.0",
+  "description": "Playground for tasks solved in Node",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "run": "node index.js"
+  },
+  "author": "Victor Portnov",
+  "license": "MIT"
+}
