@@ -50,8 +50,8 @@ async function taskMain(taskName, testNames) {
     const readLine = readTestInput(test.dir);
     const input = module.parseInput(readLine);
     const results = module.solve(input).map(x => x.toString());
-    const verdict = checkResults(test.dir, results);
-    printResults(test.name, results, verdict);
+    const diff = checkResults(test.dir, results);
+    printResults(test.name, results, diff);
   }
 }
 
@@ -82,6 +82,8 @@ function readTestInput(testDir) {
   return readFile(testDir, 'input.txt');
 }
 
+const EOF = {};
+
 function readTestOutput(testDir) {
   return readFile(testDir, 'output.txt');
 }
@@ -92,29 +94,69 @@ function readFile(dir, name) {
     .split('\n')
     .map(str => str.replace(/\s*$/, ''));
 
+  return readLineFromArray(input);
+}
+
+function readLineFromArray(arr) {
   let currentLine = 0;
 
   return () => {
-    return currentLine < input.length? input[currentLine++] : readFile.eof;
+    return currentLine < arr.length? arr[currentLine++] : EOF;
   };
 }
-readFile.eof = {};
 
-function printResults(name, results, verdict) {
+function printResults(name, results, diff) {
   console.log(name);
   console.log(results.join('\n'));
-  console.log('Verdict:', verdict, '\n');
+
+  const verdict = diff.length === 0 ? 'PASSED' : 'FAILED';
+  console.log(`Verdict: ${verdict}\n`);
+  printDiff(diff);
+}
+
+function printDiff(diff) {
+  const limit = 3;
+
+  if (diff.length > 0) {
+    console.log(`${diff.length} differences from expected output found`);
+  }
+
+  if (diff.length > limit) {
+    console.log(`Top ${limit} differences:\n`);
+  }
+
+  diff.slice(0, limit).forEach((diff) => {
+    console.log(`Line: ${diff.line}`);
+    console.log(`Expected: ${diff.expected}`);
+    console.log(`Actual: ${diff.actual}\n`);
+  });
 }
 
 function checkResults(testDir, actualResults) {
-  const readExpectedOutputLine = readTestOutput(testDir);
-  let verdict = true;
+  const nextExpected = readTestOutput(testDir);
+  const nextActual = readLineFromArray(actualResults);
+  let diff = [];
+  let expected = nextExpected();
+  let actual = nextActual();
+  let line = 1;
 
-  for (let i = 0; verdict && i < actualResults.length; ++i) {
-    verdict = (actualResults[i] === readExpectedOutputLine());
+  while (expected !== EOF || actual !== EOF) {
+    if (expected !== actual) {
+      diff.push({
+        line: line,
+        expected: resultToString(expected),
+        actual: resultToString(actual)
+      });
+    }
+
+    expected = nextExpected();
+    actual = nextActual();
+    ++line;
   }
 
-  verdict = verdict && (readExpectedOutputLine() === readFile.eof);
+  return diff;
+}
 
-  return verdict ? 'PASSED' : 'FAILED';
+function resultToString(result) {
+  return result === EOF ? 'End of file' : result;
 }
