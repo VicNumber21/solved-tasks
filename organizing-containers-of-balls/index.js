@@ -5,12 +5,12 @@ import * as path from 'path'
 
 
 export async function main(testNames) {
-  const testDirs = await getTestDirs(testNames);
+  const tests = await getTests(testNames);
 
-  const ws = process.stdout;
+  for (let test of tests) {
+    const readLine = readTestInput(test.dir);
+    let results = [];
 
-  for (let testDir of testDirs) {
-    const readLine = readTestInput(testDir);
     const q = parseInt(readLine(), 10);
 
     for (let qItr = 0; qItr < q; qItr++) {
@@ -24,22 +24,27 @@ export async function main(testNames) {
 
       let result = organizingContainers(container);
 
-      ws.write(result + "\n");
+      results.push(result);
     }
-  }
 
-  ws.end();
+    const verdict = checkResults(test.dir, results);
+    printResults(test.name, results, verdict);
+  }
 }
 
 
 // Internals
-async function getTestDirs(testNames) {
+async function getTests(testNames) {
   testNames = testNames || [];
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
   const testsDir = path.join(moduleDir, 'tests');
-
   testNames = await (testNames.length === 0 ? readDir(testsDir) : testNames);
-  return testNames.map(name => path.join(testsDir, name));
+
+  return testNames.map(name => {
+    return {
+      name: name, dir: path.join(testsDir, name)
+    };
+  });
 }
 
 async function readDir(dirPath) {
@@ -57,6 +62,10 @@ function readTestInput(testDir) {
   return readFile(testDir, 'input.txt');
 }
 
+function readTestOutput(testDir) {
+  return readFile(testDir, 'output.txt');
+}
+
 function readFile(dir, name) {
   const inputString = fs.readFileSync(path.join(dir, name), { encoding: 'utf-8' });
   const input = inputString.replace(/\s*$/, '')
@@ -66,6 +75,26 @@ function readFile(dir, name) {
   let currentLine = 0;
 
   return () => {
-    return input[currentLine++];
+    return currentLine < input.length? input[currentLine++] : readFile.eof;
   };
+}
+readFile.eof = {};
+
+function printResults(name, results, verdict) {
+  console.log(name);
+  console.log(results.join('\n'));
+  console.log('Verdict:', verdict, '\n');
+}
+
+function checkResults(testDir, actualResults) {
+  const readExpectedOutputLine = readTestOutput(testDir);
+  let verdict = true;
+
+  for (let i = 0; verdict && i < actualResults.length; ++i) {
+    verdict = (actualResults[i] === readExpectedOutputLine());
+  }
+
+  verdict = verdict && (readExpectedOutputLine() === readFile.eof);
+
+  return verdict ? 'PASSED' : 'FAILED';
 }
