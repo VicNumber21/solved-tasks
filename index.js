@@ -3,5 +3,22 @@
 
 (async () => {
   const module = await import('./organizing-containers-of-balls/index.js');
-  module.main();
+  const timeout = 10000;
+  let timeoutId;
+  await Promise.race([
+    module.main()
+      .finally(() => {
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+      }),
+
+    new Promise((resolve, reject) => {
+      timeoutId = setTimeout(() => {
+        timeoutId = undefined;
+        console.error('Timeout ' + timeout + '!');
+        reject(new Error('Timeout'));
+      }, timeout);
+    })
+  ]);
 })();
