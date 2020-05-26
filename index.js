@@ -41,7 +41,7 @@ import fs from "fs";
 
 async function taskMain(taskName, testNames) {
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-  const taskDir = path.join(moduleDir, taskName);
+  const taskDir = path.join(moduleDir, 'tasks', taskName);
   const taskModule = path.join(taskDir, 'index.js');
   const module = await import(taskModule);
   const tests = await getTests(taskDir, testNames);
