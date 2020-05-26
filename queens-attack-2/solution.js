@@ -1,4 +1,6 @@
-export function queensAttack(n, k, queenRow, queenCol, obstacles) {
+export { queensAttack as solution };
+
+function queensAttack(n, k, queenRow, queenCol, obstacles) {
   let obstacleRowIndex = 0;
   let obstacleColIndex = 1;
 

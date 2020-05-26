@@ -1,4 +1,6 @@
-export function organizingContainers(container) {
+export { organizingContainers as solution };
+
+function organizingContainers(container) {
   let n = container.length;
   let colorsSum = new Map();
   let boxesSum = new Map();
@@ -27,7 +29,6 @@ export function organizingContainers(container) {
   return boxesSum.size === 0 ? 'Possible' : 'Impossible' ;
 }
 
-// Internals
 function countSum(map, sum) {
   let count = map.get(sum) || 0;
   map.set(sum, count + 1);
