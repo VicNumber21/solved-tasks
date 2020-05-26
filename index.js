@@ -1,12 +1,28 @@
-// TODO Use commandline arguments to send task name
-// TODO Use commandline arguments to send test name to main
+import { fileURLToPath } from 'url';
+import * as path from 'path'
+
+const args = process.argv.slice(2);
+
+if (args.length === 0) {
+  throw(new Error('Task name must be passed'));
+}
 
 (async () => {
-  const module = await import('./organizing-containers-of-balls/index.js');
+  const taskName = args[0];
+  let testNames = [];
+
+  if (args[1]) {
+    testNames = args[1].split(',');
+  }
+
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const taskModule = path.join(moduleDir, taskName, 'index.js');
+
+  const module = await import(taskModule);
   const timeout = 10000;
   let timeoutId;
   await Promise.race([
-    module.main()
+    module.main(testNames)
       .finally(() => {
         if (timeoutId) {
           clearTimeout(timeoutId)
