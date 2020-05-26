@@ -1,4 +1,4 @@
-import { organizingContainers } from './solution.js';
+import { queensAttack } from './solution.js';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import * as path from 'path'
@@ -11,21 +11,21 @@ export async function main(testNames) {
     const readLine = readTestInput(test.dir);
     let results = [];
 
-    const q = parseInt(readLine(), 10);
+    const nk = readLine().split(' ');
+    const n = parseInt(nk[0], 10);
+    const k = parseInt(nk[1], 10);
+    const r_qC_q = readLine().split(' ');
+    const r_q = parseInt(r_qC_q[0], 10);
+    const c_q = parseInt(r_qC_q[1], 10);
+    let obstacles = Array(k);
 
-    for (let qItr = 0; qItr < q; qItr++) {
-      const n = parseInt(readLine(), 10);
-
-      let container = Array(n);
-
-      for (let i = 0; i < n; i++) {
-        container[i] = readLine().split(' ').map(containerTemp => parseInt(containerTemp, 10));
-      }
-
-      let result = organizingContainers(container);
-
-      results.push(result.toString());
+    for (let i = 0; i < k; i++) {
+      obstacles[i] = readLine().split(' ').map(obstaclesTemp => parseInt(obstaclesTemp, 10));
     }
+
+    let result = queensAttack(n, k, r_q, c_q, obstacles);
+
+    results.push(result.toString());
 
     const verdict = checkResults(test.dir, results);
     printResults(test.name, results, verdict);
