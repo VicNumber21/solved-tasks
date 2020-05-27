@@ -12,7 +12,7 @@ if (args.length === 0) {
     testNames = args[1].split(',');
   }
 
-  const timeout = 10000;
+  const timeout = +args[2] || 10000;
   let timeoutId;
   await Promise.race([
     taskMain(taskName, testNames)
