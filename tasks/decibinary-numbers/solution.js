@@ -1,40 +1,19 @@
 export { decibinaryNumbers as solution };
 
+let dbCache = new Map();
+
 function decibinaryNumbers(x) {
-  /*
-  let sum = 0;
-  let topDigit = 0;
-  let nextDigitWeight = 2;
-  const beforeAge = Date.now();
+  let decibinary = dbCache.get(x);
 
-  if (!done) {
-    for (let dec = 0; dec < 32; dec += 2) {
-      if (dec === nextDigitWeight) {
-        ++topDigit;
-        nextDigitWeight *= 2;
-      }
-
-      const before = Date.now();
-      const result = enumerateDecimalNumber(dec);
-      const decibinaries = toDecibinaries(result, 1);
-      const perf = Date.now() - before;
-      sum += 2 * result.count;
-      console.log(`Count = ${result.count}`);
-      decibinaries.forEach(db => {
-        console.log(db);
-      })
-      console.log(`PERF = ${perf}`);
-    }
+  if (decibinary === undefined) {
+    decibinary = dbNumbers(x - 1);
+    dbCache.set(x, decibinary);
   }
 
-  console.log(`sum = ${sum}`);
-  console.log(`topDigit = ${topDigit}`)
-  console.log(`PERF = ${Date.now() - beforeAge}`)
+  return decibinary;
+}
 
-  done = true;
-   */
-
-  const xIndex = x - 1;
+function dbNumbers(xIndex) {
   let decimal = 0;
   let evenIndex = 0;
   let oddIndex = 0;
@@ -99,7 +78,8 @@ function enumerateDecimalNumber(decimal, topDigit) {
   }
   else {
     const topDigitWeight = 2 ** topDigit;
-    const maxDigitValue = decimal / topDigitWeight;
+    let maxDigitValue = decimal / topDigitWeight;
+    maxDigitValue = maxDigitValue > 9 ? 9 : maxDigitValue;
 
     for (let currentDigit = 0; currentDigit <= maxDigitValue; ++currentDigit) {
       const subresult = enumerateDecimalNumber(decimal - currentDigit * topDigitWeight, topDigit - 1);
@@ -108,7 +88,7 @@ function enumerateDecimalNumber(decimal, topDigit) {
     }
   }
 
-  if (!isResultCached) {
+  if (!isResultCached && result.count > 0) {
     resultsCache[topDigit].push(result);
   }
 
@@ -139,29 +119,19 @@ function maxDecibinary(maxDigit) {
       maxDB += 9 * digitWeight;
       digitWeight *= 2;
     }
+
+    maxDecibinaryCache[maxDigit] = maxDB;
   }
 
   return maxDB;
 }
 
-/* TODO debug
-function toDecibinaries(result, odd) {
-  let decibinaries = [];
-
-  for (let i = 0; i < result.count; ++i) {
-    decibinaries.push(toDecibinary(result, i, odd));
-  }
-
-  return decibinaries;
-}
- */
-
 function toDecibinary(result, index, odd) {
   let decibinary = -1;
 
-  if (result.count === 1) {
+  // TODO just simple fix, is it good? can I check just length?
+  if (result.count === 1 && result.variants.length === 1) {
     decibinary = result.variants[0] + odd;
-    console.assert(index === 0); // TODO debug
   }
   else {
     let currentCount = 0;
@@ -182,4 +152,3 @@ function toDecibinary(result, index, odd) {
 
   return decibinary;
 }
-
