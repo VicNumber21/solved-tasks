@@ -6,7 +6,7 @@ export function parseInput(readLine) {
   let input = [];
 
   for (let qItr = 0; qItr < q; ++qItr) {
-    input.push(parseInt(readLine(), 10));
+    input.push(BigInt(readLine()));
   }
 
   return input;
