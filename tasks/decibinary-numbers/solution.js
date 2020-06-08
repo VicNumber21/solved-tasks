@@ -2,12 +2,12 @@ export { decibinaryNumbers as solution };
 
 function decibinaryNumbers(x) {
   const indexCache = buildIndexCache(1e16);
-  const xIndex = x - 1;
+  const xIndex = BigInt(x) - 1n;
   const [entry, entryIndex] = binarySearch(indexCache, (entry) => entry.maxIndex - xIndex);
-  const prevEntry = indexCache[entryIndex - 1] || { maxIndex: 0 };
+  const prevEntry = indexCache[entryIndex - 1] || { maxIndex: 0n };
   const evenIndex = prevEntry.maxIndex;
-  const oddIndex = evenIndex + (entry.maxIndex - evenIndex) / 2;
-  const odd = xIndex >= oddIndex ? 1 : 0;
+  const oddIndex = evenIndex + (entry.maxIndex - evenIndex) / 2n;
+  const odd = xIndex >= oddIndex ? 1n : 0n;
   const index = odd ? xIndex - oddIndex : xIndex - evenIndex;
 
   return toDecibinary(entry.result, index, odd);
@@ -22,7 +22,7 @@ function binarySearch(sortedArray, predicate) {
     const midValue = sortedArray[mid];
     const predicateResult = predicate(midValue);
 
-    if (predicateResult <= 0) {
+    if (predicateResult <= 0n) {
       left = mid > left ? mid : right;
     }
     else {
@@ -37,14 +37,14 @@ function binarySearch(sortedArray, predicate) {
 let indexCache = [];
 function buildIndexCache (x) {
   if (indexCache.length === 0) {
-    const xIndex = x - 1;
+    const xIndex = BigInt(x) - 1n;
     let decimal = 0;
-    let maxIndex = 0;
+    let maxIndex = 0n;
     let lastResult;
 
     do {
       lastResult = enumerateDecimalNumber(decimal);
-      maxIndex += 2 * lastResult.count;
+      maxIndex += 2n * lastResult.count;
       decimal += 2;
       indexCache.push({
         result: lastResult,
@@ -74,7 +74,7 @@ function enumerateDecimalNumber(decimal, topDigit) {
   }
 
   let result = {
-    count: 0,
+    count: 0n,
     topDigit: topDigit,
     minTopDigitValue: 0,
     variants: []
@@ -93,11 +93,11 @@ function enumerateDecimalNumber(decimal, topDigit) {
     result = resultsCache[topDigit][cacheIndex];
   }
   else if (maxDB < decimal) {
-    result.count = 0;
+    result.count = 0n;
   }
   else if (topDigit === 0) {
-    result.count = 1;
-    result.variants.push(decimal);
+    result.count = 1n;
+    result.variants.push(BigInt(decimal));
   }
   else {
     const topDigitBinaryWeight = 2 ** topDigit;
@@ -115,7 +115,7 @@ function enumerateDecimalNumber(decimal, topDigit) {
     }
   }
 
-  if (!isResultCached && result.count > 0) {
+  if (!isResultCached && result.count > 0n) {
     resultsCache[topDigit].push(result);
   }
 
@@ -154,13 +154,13 @@ function maxDecibinary(maxDigit) {
 }
 
 function toDecibinary(result, index, odd) {
-  let decibinary = -1;
+  let decibinary = -1n;
 
   if (result.variants.length === 1) {
     decibinary = result.variants[0] + odd;
   }
   else {
-    let currentCount = 0;
+    let currentCount = 0n;
 
     for (let digitIndex = 0; digitIndex < result.variants.length; ++digitIndex) {
       const variant = result.variants[digitIndex];
@@ -170,7 +170,9 @@ function toDecibinary(result, index, odd) {
       const maxIndex = currentCount;
 
       if (index >= minIndex && index < maxIndex) {
-        decibinary = 10 ** result.topDigit * (digitIndex + result.minTopDigitValue) + toDecibinary(variant, index - minIndex, odd);
+        const decimalDigitWeight = 10n ** BigInt(result.topDigit);
+        const digitValue = BigInt(digitIndex + result.minTopDigitValue);
+        decibinary = decimalDigitWeight * digitValue  + toDecibinary(variant, index - minIndex, odd);
         break;
       }
     }
