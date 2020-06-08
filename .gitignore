@@ -1,5 +1,6 @@
 #WebStorm settings
 .idea/
+.run/
 
 # Logs
 logs
