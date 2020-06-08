@@ -1,4 +1,7 @@
 const args = process.argv.slice(2);
+const options = {
+  isDebug: args[2] === 'debug=true'
+};
 
 if (args.length === 0) {
   throw(new Error('Task name must be passed'));
@@ -12,7 +15,7 @@ if (args.length === 0) {
     testNames = args[1].split(',');
   }
 
-  const timeout = +args[2] || 10000;
+  const timeout = options.isDebug ? 9999999 : 10000;
   let timeoutId;
   await Promise.race([
     taskMain(taskName, testNames)
@@ -107,7 +110,10 @@ function readLineFromArray(arr) {
 
 function printResults(name, results, diff) {
   console.log(name);
-  console.log(results.join('\n'));
+
+  if (options.isDebug) {
+    console.log(results.join('\n'));
+  }
 
   const verdict = diff.length === 0 ? 'PASSED' : 'FAILED';
   console.log(`Verdict: ${verdict}\n`);
@@ -128,7 +134,7 @@ function printDiff(diff) {
   diff.slice(0, limit).forEach((diff) => {
     console.log(`Line: ${diff.line}`);
     console.log(`Expected: ${diff.expected}`);
-    console.log(`Actual: ${diff.actual}\n`);
+    console.log(`  Actual: ${diff.actual}\n`);
   });
 }
 
