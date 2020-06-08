@@ -1,40 +1,5 @@
 export { decibinaryNumbers as solution };
 
-let dbCache = new Map();
-
-// function decibinaryNumbers(x) {
-//   let decibinary = dbCache.get(x);
-//
-//   if (decibinary === undefined) {
-//     decibinary = dbNumbers(x - 1);
-//     dbCache.set(x, decibinary);
-//   }
-//
-//   return decibinary;
-// }
-
-function dbNumbers(xIndex) {
-  let decimal = 0;
-  let evenIndex = 0;
-  let oddIndex = 0;
-  let maxIndex = 0;
-  let lastResult;
-
-  do {
-    lastResult = enumerateDecimalNumber(decimal);
-    evenIndex = maxIndex;
-    oddIndex = evenIndex + lastResult.count;
-    maxIndex = oddIndex + lastResult.count;
-    decimal += 2;
-  }
-  while (xIndex >= maxIndex);
-
-  const odd = xIndex >= oddIndex ? 1 : 0;
-  const index = odd ? xIndex - oddIndex : xIndex - evenIndex;
-
-  return toDecibinary(lastResult, index, odd);
-}
-
 function decibinaryNumbers(x) {
   const indexCache = buildIndexCache(1e16);
   const xIndex = x - 1;
@@ -95,7 +60,6 @@ function buildIndexCache (x) {
 
 let resultsCache = [];
 let topDigitCache = [];
-
 function enumerateDecimalNumber(decimal, topDigit) {
   const cacheIndex = Math.floor(decimal / 2);
   const isTopDigitCached = cacheIndex < topDigitCache.length;
@@ -168,8 +132,8 @@ function detectTopDigit(decimal) {
   return topDigit;
 }
 
-let maxDecibinaryCache = [];
 
+let maxDecibinaryCache = [];
 function maxDecibinary(maxDigit) {
   let maxDB = 0;
   let digitWeight = 1;
