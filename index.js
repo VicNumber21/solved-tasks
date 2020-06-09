@@ -51,10 +51,21 @@ async function taskMain(taskName, testNames) {
 
   for (let test of tests) {
     const readLine = readTestInput(test.dir);
+    const beforeParsing = process.hrtime.bigint();
     const input = module.parseInput(readLine);
-    const results = module.solve(input).map(x => x.toString());
-    const diff = checkResults(test.dir, results);
-    printResults(test.name, results, diff);
+    const afterParsing = process.hrtime.bigint();
+    const output = module.solve(input).map(x => x.toString());
+    const afterExecution = process.hrtime.bigint();
+    const diff = checkOutput(test.dir, output);
+    printResults({
+      testName: test.name,
+      output: output,
+      diff: diff,
+      performance: {
+        parsing: afterParsing - beforeParsing,
+        execution: afterExecution - afterParsing
+      }
+    });
   }
 }
 
@@ -108,16 +119,21 @@ function readLineFromArray(arr) {
   };
 }
 
-function printResults(name, results, diff) {
-  console.log(name);
+function printResults(results) {
+  console.log(`Name: ${results.testName}`);
 
   if (options.isDebug) {
-    console.log(results.join('\n'));
+    console.log(results.output.join('\n'));
   }
 
-  const verdict = diff.length === 0 ? 'PASSED' : 'FAILED';
+  console.log(
+`Performance:
+  - parsing: ${formatTimestamp(results.performance.parsing)}
+  - execution: ${formatTimestamp(results.performance.execution)}`);
+
+  const verdict = (results.diff.length === 0) ? 'PASSED' : 'FAILED';
   console.log(`Verdict: ${verdict}\n`);
-  printDiff(diff);
+  printDiff(results.diff);
 }
 
 function printDiff(diff) {
@@ -138,9 +154,9 @@ function printDiff(diff) {
   });
 }
 
-function checkResults(testDir, actualResults) {
+function checkOutput(testDir, actualOutput) {
   const nextExpected = readTestOutput(testDir);
-  const nextActual = readLineFromArray(actualResults);
+  const nextActual = readLineFromArray(actualOutput);
   let diff = [];
   let expected = nextExpected();
   let actual = nextActual();
@@ -165,4 +181,29 @@ function checkResults(testDir, actualResults) {
 
 function resultToString(result) {
   return result === EOF ? 'End of file' : result;
+}
+
+const nanoInMilliSecond = 1000n * 1000n;
+const nanoInSecond = nanoInMilliSecond * 1000n;
+const nanoInMinute = nanoInSecond * 60n;
+const nanoInHour = nanoInMinute * 60n;
+const nanoInDay = nanoInHour * 24n;
+const formater = [
+  { value: nanoInDay, name: 'day(s)'},
+  { value: nanoInHour, name: 'h'},
+  { value: nanoInMinute, name: 'min'},
+  { value: nanoInSecond, name: 'sec'},
+  { value: nanoInMilliSecond, name: 'ms'},
+  { value: 1n, name: 'ns'},
+];
+function formatTimestamp(timestamp) {
+  return formater .reduce((timestampStr, unit) => {
+    if (timestamp >= unit.value) {
+      timestampStr += timestampStr.length > 0 ? ' ' : '';
+      timestampStr += `${timestamp / unit.value} ${unit.name};`
+      timestamp %= unit.value;
+    }
+
+    return timestampStr;
+  }, '');
 }
