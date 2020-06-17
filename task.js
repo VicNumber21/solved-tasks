@@ -48,6 +48,7 @@ async function taskMain(taskName, testNames) {
   const taskModule = path.join(taskDir, 'index.js');
   const module = await import(taskModule);
   const tests = await getTests(taskDir, testNames);
+  let counters = { PASSED: 0, FAILED: 0};
 
   for (let test of tests) {
     const readLine = readTestInput(test.dir);
@@ -66,7 +67,10 @@ async function taskMain(taskName, testNames) {
         execution: afterExecution - afterParsing
       }
     });
+    ++counters[verdict(diff)];
   }
+
+  console.log(`RUN: ${tests.length}, PASSED:${counters.PASSED}, FAILED: ${counters.FAILED}`);
 }
 
 async function getTests(taskDir, testNames) {
@@ -131,9 +135,12 @@ function printResults(results) {
   - parsing: ${formatTimestamp(results.performance.parsing)}
   - execution: ${formatTimestamp(results.performance.execution)}`);
 
-  const verdict = (results.diff.length === 0) ? 'PASSED' : 'FAILED';
-  console.log(`Verdict: ${verdict}\n`);
+  console.log(`Verdict: ${verdict(results.diff)}\n`);
   printDiff(results.diff);
+}
+
+function verdict(diff) {
+  return (diff.length === 0) ? 'PASSED' : 'FAILED';
 }
 
 function printDiff(diff) {
@@ -188,7 +195,7 @@ const nanoInSecond = nanoInMilliSecond * 1000n;
 const nanoInMinute = nanoInSecond * 60n;
 const nanoInHour = nanoInMinute * 60n;
 const nanoInDay = nanoInHour * 24n;
-const formater = [
+const formatter = [
   { value: nanoInDay, name: 'day(s)'},
   { value: nanoInHour, name: 'h'},
   { value: nanoInMinute, name: 'min'},
@@ -197,7 +204,7 @@ const formater = [
   { value: 1n, name: 'ns'},
 ];
 function formatTimestamp(timestamp) {
-  return formater .reduce((timestampStr, unit) => {
+  return formatter .reduce((timestampStr, unit) => {
     if (timestamp >= unit.value) {
       timestampStr += timestampStr.length > 0 ? ' ' : '';
       timestampStr += `${timestamp / unit.value} ${unit.name};`
