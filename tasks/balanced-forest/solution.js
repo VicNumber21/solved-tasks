@@ -4,13 +4,14 @@ function balancedForest(vertices, edges) {
   let tree = buildTree(vertices, edges);
   const overallSum = calculateSumsAndAssignIds(tree);
   let branchSums = buildBranchSums(tree);
-  const lowerBound = overallSum / 3n + 1n;
+  const lowerBoundCorrection = overallSum % 3n > 0n ? 1n : 0n;
+  const lowerBound = overallSum / 3n + lowerBoundCorrection;
   const upperBound = overallSum / 2n;
   tree.sort((v1, v2) => Number(v1.sum - v2.sum));
   branchSums.sort((v1, v2) => Number(v1.sum - v2.sum));
   let third = false;
   let leftIndex = leftBinarySearch(tree, lowerBound);
-  let rightIndex = tree.length - 2;
+  let rightIndex = leftBinarySearch(tree, overallSum - lowerBound);
 
   while(!third && (tree[leftIndex].sum <= upperBound || rightIndex >= leftIndex && tree[rightIndex].sum > upperBound)) {
     const leftThird = tree[leftIndex].sum;
@@ -21,7 +22,9 @@ function balancedForest(vertices, edges) {
       --rightIndex;
     }
     else if (lowerBound < rightThird && rightThird < leftThird) {
-      if (searchReminderInBranch(tree, rightIndex, rightSum - rightThird)) {
+      if (searchReminderInBranch(tree, rightIndex, rightThird) ||
+          searchReminderInBranch(tree, rightIndex, rightSum - rightThird))
+      {
         third = rightThird;
       }
 
@@ -152,37 +155,28 @@ function calculateSumsAndAssignIds(tree) {
 function buildBranchSums(tree) {
   let root = tree[0];
   let overallSum = root.sum;
-  const rootBranchSums = root.next.map(v => {
-    return {
-      sum: v.sum + root.value,
-      vertex: root
-    };
-  });
-  let branchSums = [rootBranchSums];
+  let branchSums = [];
   let vertexStack = [root];
+
+  for (const v of root.next) {
+    branchSums.push({ sum: v.sum + root.value, vertex: root });
+  }
 
   while (vertexStack.length > 0) {
     const parent = vertexStack.pop();
 
     for(let vertex of parent.next) {
-      let vertexBranchSums = vertex.next.map(v => {
-        return {
-          sum: v.sum + vertex.value,
-          vertex: vertex
-        };
-      });
+      for (const v of vertex.next) {
+        branchSums.push({ sum: v.sum + vertex.value, vertex: vertex });
+      }
 
-      vertexBranchSums.push({
-        sum: overallSum - vertex.sum + vertex.value,
-        vertex: vertex
-      });
+      branchSums.push({ sum: overallSum - vertex.sum + vertex.value, vertex: vertex });
 
       vertexStack.push(vertex);
-      branchSums.push(vertexBranchSums);
     }
   }
 
-  return branchSums.reduce((acc, val) => acc.concat(val), []);
+  return branchSums;
 }
 
 function leftBinarySearch(sortedArray, value) {
