@@ -8,16 +8,19 @@ function balancedForest(vertices, edges) {
   const upperBound = overallSum / 2n;
   tree.sort((v1, v2) => Number(v1.sum - v2.sum));
   branchSums.sort((v1, v2) => Number(v1.sum - v2.sum));
+  let third = false;
   let leftIndex = leftBinarySearch(tree, lowerBound);
   let rightIndex = tree.length - 2;
-  let third = false;
 
-  while(!third && (tree[leftIndex].sum <= upperBound || rightIndex > leftIndex && tree[rightIndex].sum > upperBound)) {
+  while(!third && (tree[leftIndex].sum <= upperBound || rightIndex >= leftIndex && tree[rightIndex].sum > upperBound)) {
     const leftThird = tree[leftIndex].sum;
     const rightSum = tree[rightIndex].sum;
     const rightThird = overallSum - rightSum;
 
-    if (lowerBound < rightThird && rightThird < leftThird) {
+    if (lowerBound > rightThird) {
+      --rightIndex;
+    }
+    else if (lowerBound < rightThird && rightThird < leftThird) {
       if (searchReminderInBranch(tree, rightIndex, rightSum - rightThird)) {
         third = rightThird;
       }
@@ -120,7 +123,6 @@ function buildTree(vertices, edges) {
 function calculateSumsAndAssignIds(tree) {
   let root = tree[0];
   root.id = '0';
-  root.aSum = root.value;
   let vertexStack = [root];
   let nextStack = [root.next]
 
@@ -133,7 +135,6 @@ function calculateSumsAndAssignIds(tree) {
 
       for (let [index, vertex] of next.entries()) {
         vertex.id = `${parent.id}-${index}`;
-        vertex.aSum = parent.aSum + vertex.value;
         vertexStack.push(vertex);
         vertex.next = vertex.next.filter(v => v !== parent);
         nextStack.push(vertex.next);
