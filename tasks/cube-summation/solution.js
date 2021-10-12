@@ -8,11 +8,10 @@ function fn(n, operations) {
 
   const results = [];
   const cube = {
-    c: new Map(),
+    w: new Map(),
     x: new Array(n),
     y: new Array(n),
-    z: new Array(n),
-    w: []
+    z: new Array(n)
   };
 
   for(const operation of operations) {
@@ -28,77 +27,66 @@ function fn(n, operations) {
 }
 
 function updateCube(cube, x, y, z, w) {
-  const idKey = [x, y, z].join('-');
-  let id = cube.c.get(idKey);
-
-  if (id === undefined) {
-    id = cube.w.length;
-    cube.w.push(w);
-    cube.c.set(idKey, id);
-    updateDimension(cube.x, x - 1, id);
-    updateDimension(cube.y, y - 1, id);
-    updateDimension(cube.z, z - 1, id);
-  }
-  else {
-    cube.w[id] = w;
-  }
+  const id = [x, y, z].join('-');
+  cube.w.set(id, w);
+  updateDimension(cube.x, x - 1, id);
+  updateDimension(cube.y, y - 1, id);
+  updateDimension(cube.z, z - 1, id);
 }
 
 function updateDimension(dimension, l, id) {
-  const flag = idFlag(id);
-  dimension[l] = (dimension[l] ? dimension[l] | flag : flag);
+  const dimSet = dimension[l] || new Set();
+  dimSet.add(id);
+  dimension[l] = dimSet;
 }
 
 function queryCube(cube, x1, y1, z1, x2, y2, z2) {
-  let idFlags = dimensionIdFlags(cube.x, x1, x2);
+  let valuesSet = dimensionUnion(cube.x, x1, x2);
 
-  if (idFlags > 0n) {
-    idFlags &= dimensionIdFlags(cube.y, y1, y2)
+  if (valuesSet.size > 0) {
+    valuesSet = intersection(valuesSet, dimensionUnion(cube.y, y1, y2));
   }
 
-  if (idFlags > 0n) {
-    idFlags &= dimensionIdFlags(cube.z, z1, z2)
+  if (valuesSet.size > 0) {
+    valuesSet = intersection(valuesSet, dimensionUnion(cube.z, z1, z2));
   }
 
   let res = 0;
 
-  while (idFlags > 0) {
-    const id= bigIntLog2(idFlags);
-    res += cube.w[id];
-    idFlags &= ~idFlag(id);
+  for (const valueId of valuesSet) {
+    res += cube.w.get(valueId);
   }
 
   return res;
 }
 
-function dimensionIdFlags(dimension, l1, l2) {
-  let ids = 0n;
+function dimensionUnion(dimension, l1, l2) {
+  const dimSet = new Set();
 
   for (let l = l1 - 1; l < l2; ++l) {
     if (dimension[l] !== undefined) {
-      ids |= dimension[l];
+      union(dimSet, dimension[l]);
     }
   }
 
-  return ids;
+  return dimSet;
 }
 
-function idFlag(id) {
-  return (1n << BigInt(id));
+function union(setA, setB) {
+  for (let elem of setB) {
+    setA.add(elem);
+  }
 }
 
-function bigIntLog2(value) {
-  let result = 0n, i, v;
+function intersection(setA, setB) {
+  const intSet = new Set();
 
-  for (i = 1n; value >> (1n << i); i <<= 1n) {}
+  for (let elem of setB) {
 
-  while (value > 1n) {
-    v = 1n << --i;
-    if (value >> v) {
-      result += v;
-      value >>= v;
+    if (setA.has(elem)) {
+      intSet.add(elem);
     }
   }
 
-  return result;
+  return intSet;
 }
