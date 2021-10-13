@@ -17,10 +17,8 @@ class FakeStack {
 }
 
 function fn(p) {
-  let maxVal = 1E9;
-  let undead = maxVal;
+  let undead = 1E9;
   let max = 0;
-  let prev = maxVal;
   let stacks = [];
   const maxStackIndex = 0;
   let currentStackIndex = -1;
@@ -52,8 +50,6 @@ function fn(p) {
 
       max = Math.max(max, stacks[maxStackIndex].length);
     }
-
-    prev = plant;
   }
 
   return max;
