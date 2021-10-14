@@ -5,6 +5,11 @@ if (args.length === 0) {
 }
 
 const templateName = 'hacker-rank';
+const templateAutomation = {
+  'hacker-rank': [
+    updateReadme
+  ]
+};
 
 
 (() => {
@@ -50,6 +55,29 @@ function createTask() {
     const dstFile = path.join(taskDir, fileName);
     fs.copyFileSync(srcFile, dstFile);
   }
+
+  for (const automation of templateAutomation[templateName]) {
+    automation(taskName, taskDir);
+  }
+}
+
+function updateReadme(taskName, taskDir) {
+  const taskPrettyName = taskName
+    .split('-')
+    .map((word) => {
+      word = word.toLowerCase();
+      return word[0].toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+
+  const taskUrl = path.join('https://www.hackerrank.com/challenges', taskName, 'problem');
+  const readmeFile = path.join(taskDir, 'README.md');
+
+  let readmeStr = fs.readFileSync(readmeFile, { encoding: 'utf8'});
+  readmeStr = readmeStr.replace(/Task_Name/g, taskPrettyName);
+  readmeStr = readmeStr.replace(/Task_Url/g, taskUrl);
+
+  fs.writeFileSync(readmeFile, readmeStr, { encoding: 'utf8'});
 }
 
 function createTest() {
