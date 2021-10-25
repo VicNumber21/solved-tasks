@@ -1,207 +1,104 @@
-export { fn as solution };
+export { solve as solution };
 
-function fn(arr) {
-  let count = 0;
-  let newIndex = 0;
-  let newLength = arr.length;
+function solve(arr) {
+  const initialLength = arr.length;
+  arr = arr.filter((x) => x > 1);
+  let count = (initialLength -1 + arr.length) * (initialLength - arr.length) / 2;
+  const stack = buildStack(arr);
 
-  for(let i = 0; i < arr.length; ++i) {
-    if (arr[i] === 1) {
-      count += --newLength;
-    }
-    else {
-      arr[newIndex] = { value: arr[i], i: newIndex };
-      ++newIndex;
-    }
-  }
+  while (stack.length > 0) {
+    const currentNode = stack.pop();
+    const [leftCounter, leftMin] = currentNode.left ? [ currentNode.left.counter, currentNode.left.min ] :
+                                           countNumbers(arr, currentNode.range.i + 1, currentNode.max.i - 1);
+    const [rightCounter, rightMin] = currentNode.right ? [ currentNode.right.counter, currentNode.right.min ]
+                                           : countNumbers(arr, currentNode.max.i + 1, currentNode.range.j - 1);
 
-  arr.length = newLength;
+    const max = arr[currentNode.max.i];
+    let leftSorted = sortCounter(leftCounter, max / rightMin);
+    let rightSorted = sortCounter(rightCounter, max / leftMin);
 
-  const sortedArr = Array.from(arr).sort((x1, x2) => x1.value - x2.value);
-  const min = sortedArr[0].value;
-  const minMax = min * sortedArr[1].value;
+    currentNode.counter = mergeCounters(leftCounter, rightCounter, max);
+    currentNode.min = Math.min(leftMin, rightMin);
 
-  const root = {
-    range: { i: -1, j: arr.length }
-  };
-
-  while (sortedArr.length > 0 && sortedArr[sortedArr.length - 1].value >= minMax) {
-    let currentMax = sortedArr.pop();
-    let currentNode = root;
-    let nodeFound = false;
-
-    if (currentNode.maxRange === undefined) {
-      currentNode.maxRange = { i: currentMax.i, j: currentMax.i }
-      nodeFound = true;
-    }
-
-    while (!nodeFound) {
-      let previousNode = currentNode;
-
-      if (currentMax.i < currentNode.maxRange.i) {
-        currentNode = currentNode.left;
-      }
-      else {
-        currentNode = currentNode.right;
-      }
-
-      if (currentNode === undefined) {
-        nodeFound = true;
-
-        if (previousNode.maxRange.i - currentMax.i === 1) {
-          previousNode.maxRange.i = currentMax.i;
-          currentNode = previousNode;
-        }
-        else if (currentMax.i - previousNode.range.i === 1) {
-          previousNode.range.i = currentMax.i;
-          currentNode = previousNode;
-        }
-        else if (currentMax.i - previousNode.maxRange.j === 1) {
-          previousNode.maxRange.j = currentMax.i;
-          currentNode = previousNode;
-        }
-        else if (previousNode.range.j - currentMax.i === 1) {
-          previousNode.range.j = currentMax.i;
-          currentNode = previousNode;
-        }
-        else {
-          currentNode = {
-            maxRange: { i: currentMax.i, j: currentMax.i }
-          };
-
-          if (currentMax.i < previousNode.maxRange.i) {
-            currentNode. range = { i: previousNode.range.i, j: previousNode.maxRange.i };
-            previousNode.left = currentNode;
-          }
-          else {
-            currentNode.range = { i: previousNode.maxRange.j, j: previousNode.range.j };
-            previousNode.right = currentNode;
-          }
-        }
-      }
-    }
-
-    if (currentNode.leftCounter !== undefined && currentNode.rightCounter !== undefined) {
-      continue;
-    }
-
-    const maxMin = currentMax.value / min;
-    let leftCounter = currentNode.leftCounter;
-    let rightCounter = currentNode.rightCounter;
-    let leftMin = 0;
-    let rightMin = 0;
-
-    if (leftCounter === undefined) {
-      [leftCounter, leftMin] = countNumbers(arr, maxMin, currentNode.range.i + 1, currentMax.i - 1);
-
-      if (currentNode.rightCounter) {
-        rightMin = subCounters(currentNode.rightCounter, leftCounter, maxMin);
-      }
-    }
-
-    if (rightCounter === undefined) {
-      [rightCounter, rightMin] = countNumbers(arr, maxMin, currentMax.i + 1, currentNode.range.j - 1);
-
-      if (currentNode.leftCounter) {
-        leftMin = subCounters(currentNode.leftCounter, rightCounter, maxMin);
-      }
-    }
-
-    currentNode.leftCounter = leftCounter;
-    currentNode.rightCounter = rightCounter;
-
-    const leftMinMax = currentMax.value / rightMin;
-    const rightMinMax = currentMax.value / leftMin;
-
-    trimCounter(currentNode.leftCounter, leftMinMax);
-    trimCounter(currentNode.rightCounter, rightMinMax);
-
-    if(currentNode.leftCounter.size === 0 || currentNode.rightCounter.size === 0) {
-      continue;
-    }
-
-    let sortedLeft = Array.from(currentNode.leftCounter).sort(([x1], [x2]) => x1 - x2);
-    let sortedRight = Array.from(currentNode.rightCounter).sort(([x1], [x2]) => x1 - x2);
-
-    if (sortedRight.length < sortedLeft.length) {
-      [sortedLeft, sortedRight] = [sortedRight, sortedLeft];
-    }
-
-    for (let rightInd = 1; rightInd < sortedRight.length ; ++rightInd) {
-      sortedRight[rightInd][1] += sortedRight[rightInd - 1][1];
-    }
-
-    let rightMinLength = sortedRight.length;
-
-    for (let leftInd = 0; leftInd < sortedLeft.length; ++leftInd) {
-      const rightMinMax = currentMax.value / sortedLeft[leftInd][0];
-      let rightInd = binarySearch(sortedRight, rightMinLength - 1, rightMinMax) - 1;
-
-      if (rightInd < 0 ) {
-        break
-      }
-      else {
-        count += sortedLeft[leftInd][1] * sortedRight[rightInd][1];
-        rightMinLength = rightInd + 1;
-      }
-    }
+    count += countPairs(max, leftSorted, rightSorted);
   }
 
   return count;
 }
 
-function countNumbers(arr, maxMin, i, j) {
+function countNumbers(arr, i, j) {
   const counter = new Map();
-  let min = maxMin + 1;
+  let min = Infinity;
 
   for (let ind = i; ind <= j; ++ind) {
-    const value = arr[ind].value;
-
-    if (value <= maxMin) {
-      min = Math.min(min, value);
-      counter.set(value, (counter.get(value) || 0) + 1);
-    }
+    const value = arr[ind];
+    increaseCounter(counter, value, 1);
+    min = Math.min(min, value);
   }
 
   return [counter, min];
 }
 
-function reduceCounter(counter, value, count) {
-  const newCount = (counter.get(value) || 0) - count;
-
-  if (newCount > 0) {
-    counter.set(value, newCount);
-  }
-  else {
-    counter.delete(value);
-  }
+function increaseCounter(counter, value, count) {
+  counter.set(value, (counter.get(value) || 0) + count);
 }
 
-function trimCounter(counter, maxMin) {
-  for (const [value] of counter) {
-    if (value > maxMin) {
-      counter.delete(value);
-    }
+function mergeCounters(counter1, counter2, max) {
+  if (counter1.size < counter2.size) {
+    [counter1, counter2] = [counter2, counter1];
   }
+
+  increaseCounter(counter1, max, 1);
+
+  for (const [value, count] of counter2) {
+    increaseCounter(counter1, value, count);
+  }
+
+  return counter1;
 }
 
-function subCounters(counterToReduce, counter, maxMin) {
-  let min = maxMin + 1;
+function sortCounter(counter, maxMin) {
+  const sorted = [];
 
-  for (const [value, count] of counter) {
-    if (value <= maxMin) {
-      reduceCounter(counterToReduce, value, count);
-
-      if (counterToReduce.has(value)) {
-        min = Math.min(value);
-      }
-    }
-    else {
-      counter.delete(value);
+  for (const c of counter) {
+    if (c[0] <= maxMin) {
+      sorted.push(c);
     }
   }
 
-  return min;
+  sorted.sort(([x1], [x2]) => x1 - x2);
+
+  return sorted;
+}
+
+function countPairs(max, leftSorted, rightSorted) {
+  let count = 0;
+
+  if (rightSorted.length < leftSorted.length) {
+    [leftSorted, rightSorted] = [rightSorted, leftSorted];
+  }
+
+  for (let rightInd = 1; rightInd < rightSorted.length ; ++rightInd) {
+    rightSorted[rightInd][1] += rightSorted[rightInd - 1][1];
+  }
+
+  let rightMinLength = rightSorted.length;
+
+  for (let leftInd = 0; leftInd < leftSorted.length && rightMinLength > 0; ) {
+    const rightMaxMin = max / leftSorted[leftInd][0];
+    let rightInd = binarySearch(rightSorted, rightMinLength - 1, rightMaxMin) - 1;
+    const leftMaxMin = max / rightSorted[rightInd][0];
+    let leftMinCount = 0;
+
+    while (leftInd < leftSorted.length && leftSorted[leftInd][0] <= leftMaxMin) {
+      leftMinCount += leftSorted[leftInd++][1];
+    }
+
+    count += leftMinCount * rightSorted[rightInd][1];
+    rightMinLength = rightInd + 1;
+  }
+
+  return count;
 }
 
 function binarySearch(arr, lastIndex, value) {
@@ -220,4 +117,101 @@ function binarySearch(arr, lastIndex, value) {
   }
 
   return low;
+}
+
+function findPrevNode(root, maxI) {
+  let prevNode = root;
+  let currentNode = root;
+
+  while (currentNode) {
+    prevNode = currentNode;
+
+    if (maxI < prevNode.max.i) {
+      currentNode = prevNode.left;
+    } else {
+      currentNode = prevNode.right;
+    }
+  }
+
+  return prevNode;
+}
+
+function updateTree(prevNode, maxI, length) {
+  return prevNode && joinToPrev(prevNode, maxI) ? prevNode : createNode(prevNode, maxI, length);
+}
+
+function createNode(prevNode, maxI, length) {
+  const currentNode = {
+    max: {
+      i: maxI,
+      inRange: {i: maxI, j: maxI},
+      outRange: {i: -1, j: length}
+    },
+    range: {i: -1, j: length}
+  }
+
+  if (prevNode) {
+    if (maxI < prevNode.max.i) {
+      currentNode.range = { i: prevNode.range.i, j: prevNode.max.i };
+      currentNode.max.outRange = { i: prevNode.max.outRange.i, j: prevNode.max.inRange.i };
+      prevNode.left = currentNode;
+    }
+    else {
+      currentNode.range = { i: prevNode.max.i, j: prevNode.range.j };
+      currentNode.max.outRange = { i: prevNode.max.inRange.j, j: prevNode.max.outRange.j };
+      prevNode.right = currentNode;
+    }
+  }
+
+  return currentNode;
+}
+
+function joinToPrev(prevNode, maxI) {
+  let joined = false;
+
+  if (prevNode.max.inRange.i - maxI === 1) {
+    prevNode.max.inRange.i = maxI;
+    joined = true;
+  }
+  else if (maxI - prevNode.max.outRange.i === 1) {
+    prevNode.max.outRange.i = maxI;
+    joined = true;
+  }
+  else if (maxI - prevNode.max.inRange.j === 1) {
+    prevNode.max.inRange.j = maxI;
+    joined = true;
+  }
+  else if (prevNode.max.outRange.j - maxI === 1) {
+    prevNode.max.outRange.j = maxI;
+    joined = true;
+  }
+
+  return joined;
+}
+
+function buildStack(arr) {
+  const indexes = arr.map((x, i) => i);
+  indexes.sort((i1, i2) => arr[i1] - arr[i2]);
+  const min = arr[indexes[0]];
+  const minMax = min * arr[indexes[1]];
+  let root;
+  const stack = [];
+
+  for (let i = indexes.length - 1, maxI = indexes[i], maxV = maxI !== undefined && arr[maxI];
+       maxV >= minMax;
+       maxI = indexes[--i], maxV = arr[maxI])
+  {
+    const prevNode = findPrevNode(root, maxI);
+    let currentNode = updateTree(prevNode, maxI, arr.length);
+
+    if (!root) {
+      root = currentNode;
+    }
+
+    if (prevNode !== currentNode) {
+      stack.push(currentNode);
+    }
+  }
+
+  return stack;
 }
