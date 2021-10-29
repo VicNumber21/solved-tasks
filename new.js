@@ -70,7 +70,7 @@ function updateReadme(taskName, taskDir) {
     })
     .join(' ');
 
-  const taskUrl = path.join('https://www.hackerrank.com/challenges', taskName, 'problem');
+  const taskUrl = 'https://' + path.join('www.hackerrank.com/challenges', taskName, 'problem');
   const readmeFile = path.join(taskDir, 'README.md');
 
   let readmeStr = fs.readFileSync(readmeFile, { encoding: 'utf8'});

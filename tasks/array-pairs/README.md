@@ -1,1 +1,1 @@
-[Array Pairs](https:/www.hackerrank.com/challenges/array-pairs/problem)
+[Array Pairs](https://www.hackerrank.com/challenges/array-pairs/problem)

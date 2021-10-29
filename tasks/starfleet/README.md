@@ -1,1 +1,1 @@
-[Starfleet](https:/www.hackerrank.com/challenges/starfleet/problem)
+[Starfleet](https://www.hackerrank.com/challenges/starfleet/problem)
