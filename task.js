@@ -77,6 +77,7 @@ async function getTests(taskDir, testNames) {
   testNames = testNames || [];
   const testsDir = path.join(taskDir, 'tests');
   testNames = await (testNames.length === 0 ? readDir(testsDir) : testNames);
+  testNames.sort();
 
   return testNames.map(name => {
     return {
