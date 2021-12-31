@@ -85,6 +85,7 @@ function countByMapOnInterval(map, city, interval) {
     prevSegment = segment;
     let prevLeftSegment = { left: segment.left, right: segment.right };
     let chainCount = 0;
+    let cityNeighbourCount = 0;
 
     for (let left = segment.left; left > interval.left; --left) {
       const leftValue = map.get(left);
@@ -96,7 +97,9 @@ function countByMapOnInterval(map, city, interval) {
       if (leftSegment.right > segment.right) break;
       if (chainCount > 2 && leftValue.prevCity === city) break;
       const leftCount = leftSegment.left === left && leftSegment.right === segment.right ? 1 : 0;
-      chainCount = chainCount * leftCount + leftCount;
+      cityNeighbourCount += leftValue.prevCity === city ? 1 : 0;
+      const chainFactor = cityNeighbourCount > 1 ? 0 : 1;
+      chainCount = chainFactor * (chainCount * leftCount + leftCount);
       leftMap.set(left, {count: leftCount, segment: leftSegment});
       prevLeftSegment = leftSegment;
     }
@@ -110,6 +113,7 @@ function countByMapOnInterval(map, city, interval) {
     let lastRightLeft = prevLeftSegment.left;
     let prevRightSegment = lastSolution;
     chainCount = 0;
+    cityNeighbourCount = 0;
 
     for (let right = segment.right; right < interval.right; ++right) {
       const leftCounted = counted.get(right);
@@ -126,7 +130,7 @@ function countByMapOnInterval(map, city, interval) {
         left: Math.min(prevRightSegment.left, leftValue.segment.left, rightValue.min),
         right: Math.max(prevRightSegment.right, leftValue.segment.right, rightValue.max)
       }
-      if (rightSegment.left < segment.left) {
+      if ((rightSegment.left < segment.left) || (chainCount > 2 && rightValue.prevCity === city)) {
         lastRightLeft = rightSegment.left;
         break;
       }
@@ -136,7 +140,9 @@ function countByMapOnInterval(map, city, interval) {
       const leftSolution = leftMap.get(rightSegment.left);
       if (!leftSolution) break;
       const rightCount = rightSegment.left === leftSolution.segment.left && rightSegment.right === right ? 1 : 0;
-      chainCount = chainCount * rightCount + rightCount;
+      cityNeighbourCount += rightValue.prevCity === city ? 1 : 0;
+      const chainFactor = cityNeighbourCount > 1 ? 0 : 1;
+      chainCount = chainFactor * (chainCount * rightCount + rightCount);
       const tmpLeftCount = leftCounts.get(rightSegment.left);
       const leftCount = rightCount > 0 && tmpLeftCount === 0 ? 1 : tmpLeftCount;
       count += leftCount * rightCount;
