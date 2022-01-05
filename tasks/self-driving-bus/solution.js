@@ -1,7 +1,5 @@
 export { solve as solution };
 
-const maxInt = Number.MAX_SAFE_INTEGER;
-
 function solve(roads) {
   const treeLand = new Graph(roads);
   let segmentCount = 0;
@@ -73,116 +71,50 @@ function countForCity(treeLand, city, intervalTracker) {
 
 function countByMapOnInterval(map, city, interval) {
   let count = 0;
-  const leftMap = new Map();
-  const counted = new Map();
-  let prevSegment = {};
-  let segment = { left: city, right: city };
-  let lastSolution = { left: city, right: city };
-  const lastSegment = { left: interval.left + 1, right: interval.right -1 };
+  const most = { left: city, right: city, rightLeft: city };
+  let left = city;
+  let canGoLeft = true;
+  const leftMap = new Map([[city, { isSegment: true, count: 1, min: city}]]);
 
-  while (segment.left !== prevSegment.left || segment.right !== prevSegment.right) {
-    const leftCounts = new Map();
-    prevSegment = segment;
-    let prevLeftSegment = { left: segment.left, right: segment.right };
-    let chainCount = 0;
-    let cityNeighbourCount = 0;
+  for (let right = city; right < interval.right && left > interval.left; ++right) {
+    const rightValue = map.get(right);
+    if (!rightValue) break;
+    most.left = Math.min(most.left, rightValue.min);
+    most.rightLeft = Math.min(most.rightLeft, rightValue.min);
+    most.right = Math.max(most.right, rightValue.max);
+    if (!canGoLeft && most.left < left) break;
+    if (right < most.right) continue;
 
-    for (let left = segment.left; left > interval.left; --left) {
-      const leftValue = map.get(left);
-      if (!leftValue) break;
-      const leftSegment = {
-        left: Math.min(leftValue.min, prevLeftSegment.left),
-        right: Math.max(leftValue.max, prevLeftSegment.right)
-      };
-      if (leftSegment.right > segment.right) break;
-      if (chainCount > 2 && leftValue.prevCity === city) break;
-      const leftCount = leftSegment.left === left && leftSegment.right === segment.right ? 1 : 0;
-      cityNeighbourCount += leftValue.prevCity === city ? 1 : 0;
-      const chainFactor = cityNeighbourCount > 1 ? 0 : 1;
-      chainCount = chainFactor * (chainCount * leftCount + leftCount);
-      leftMap.set(left, {count: leftCount, segment: leftSegment});
-      prevLeftSegment = leftSegment;
+    let prevLeftObj = leftMap.get(left);
+
+    for (let nextLeft = left - 1; canGoLeft && left > interval.left; --nextLeft) {
+      const leftValue = map.get(nextLeft);
+      if (!leftValue) { canGoLeft = false; break; }
+      if (right < leftValue.max) break;
+      left = nextLeft;
+      most.left = Math.min(most.left, leftValue.min);
+      const isSegment = most.left === left;
+      const leftObj = {
+        isSegment,
+        count: prevLeftObj.count + (isSegment ? 1 : 0),
+        min: most.left
+      }
+      leftMap.set(left, leftObj);
+      prevLeftObj = leftObj;
     }
 
-    for (let leftCount = 0, left = prevLeftSegment.left; left <= lastSolution.left; ++left) {
-      const current = leftMap.get(left);
-      leftCount += current.count;
-      leftCounts.set(left, leftCount);
+    let leftObj = leftMap.get(most.rightLeft);
+
+    while (leftObj && leftObj.min < most.rightLeft) {
+      most.rightLeft = leftObj.min;
+      leftObj = leftMap.get(most.rightLeft);
     }
 
-    let lastRightLeft = prevLeftSegment.left;
-    let prevRightSegment = lastSolution;
-    chainCount = 0;
-    cityNeighbourCount = 0;
-
-    for (let right = segment.right; right < interval.right; ++right) {
-      const leftCounted = counted.get(right);
-
-      if (leftCounted !== undefined && prevLeftSegment.left === leftCounted) {
-        continue;
-      }
-
-      const rightValue = map.get(right);
-      if (!rightValue) break;
-      const leftValue = leftMap.get(rightValue.min);
-      if (!leftValue) break;
-      const rightSegment = {
-        left: Math.min(prevRightSegment.left, leftValue.segment.left, rightValue.min),
-        right: Math.max(prevRightSegment.right, leftValue.segment.right, rightValue.max)
-      }
-      if ((rightSegment.left < segment.left) || (chainCount > 2 && rightValue.prevCity === city)) {
-        lastRightLeft = rightSegment.left;
-        break;
-      }
-      if (chainCount > 2 && rightValue.prevCity === city) break;
-      const countedMin = leftCounted === undefined ? maxInt : leftCounted - 1;
-      rightSegment.left = Math.min(rightSegment.left, countedMin);
-      const leftSolution = leftMap.get(rightSegment.left);
-      if (!leftSolution) break;
-      const rightCount = rightSegment.left === leftSolution.segment.left && rightSegment.right === right ? 1 : 0;
-      cityNeighbourCount += rightValue.prevCity === city ? 1 : 0;
-      const chainFactor = cityNeighbourCount > 1 ? 0 : 1;
-      chainCount = chainFactor * (chainCount * rightCount + rightCount);
-      const tmpLeftCount = leftCounts.get(rightSegment.left);
-      const leftCount = rightCount > 0 && tmpLeftCount === 0 ? 1 : tmpLeftCount;
-      count += leftCount * rightCount;
-      counted.set(right, prevLeftSegment.left);
-      prevRightSegment.right = rightSegment.right;
+    if (leftObj && leftObj.isSegment) {
+      count += leftMap.get(left).count - leftObj.count + 1;
     }
-
-    let mostLeft = prevLeftSegment.left;
-    let mostRight = prevRightSegment.right;
-    let newSegment = { left: mostLeft, right: mostRight };
-    lastSolution = newSegment;
-
-    do {
-      segment =  { left: newSegment.left, right: newSegment.right };
-
-      for (let left = segment.left; left >= mostLeft; --left) {
-        const leftValue = map.get(left);
-        if (leftValue === undefined) break;
-        mostLeft = Math.min(mostLeft, leftValue.min);
-        mostRight = Math.max(mostRight, leftValue.max);
-      }
-
-      for (let right = segment.right; right <= mostRight; ++right) {
-        const rightValue = map.get(right);
-        if (rightValue === undefined) break;
-        mostLeft = Math.min(mostLeft, rightValue.min);
-        mostRight = Math.max(mostRight, rightValue.max);
-      }
-
-      newSegment = { left: mostLeft, right: mostRight };
-    }
-    while (segment.left !== newSegment.left || segment.right !== newSegment.right)
-
-    // TODO so ugly! rework everything!
-    if (segment.left === lastSegment.left && segment.right === lastSegment.right) {
+    else if (!canGoLeft) {
       break;
-    }
-
-    if (segment.left === prevLeftSegment.left && segment.right === prevRightSegment.right) {
-      lastSolution.left = lastRightLeft;
     }
   }
 
