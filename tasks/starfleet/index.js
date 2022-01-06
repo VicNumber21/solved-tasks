@@ -1,6 +1,3 @@
-import { solution } from './solution.js';
-
-
 export function parseInput(readLine) {
   const firstMultipleInput = readLine().replace(/\s+$/g, '').split(' ');
   const n = parseInt(firstMultipleInput[0], 10);
@@ -22,6 +19,6 @@ export function parseInput(readLine) {
   return [v, ships, queries];
 }
 
-export function solve(input) {
+export function solve(solution, input) {
   return solution.apply(null, input);
 }

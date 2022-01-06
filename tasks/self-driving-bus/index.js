@@ -1,6 +1,3 @@
-import { solution } from './solution.js';
-
-
 export function parseInput(readLine) {
   const n = parseInt(readLine().trim(), 10);
   let tree = Array(n - 1);
@@ -12,6 +9,6 @@ export function parseInput(readLine) {
   return [tree];
 }
 
-export function solve(input) {
+export function solve(solution, input) {
   return [solution.apply(null, input)];
 }

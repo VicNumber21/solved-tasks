@@ -1,6 +1,3 @@
-import { solution } from './solution.js';
-
-
 export function parseInput(readLine) {
   const q = parseInt(readLine(), 10);
   let input = [];
@@ -12,6 +9,6 @@ export function parseInput(readLine) {
   return input;
 }
 
-export function solve(input) {
+export function solve(solution, input) {
   return input.map(solution);
 }

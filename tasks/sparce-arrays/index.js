@@ -1,6 +1,3 @@
-import { solution } from './solution.js';
-
-
 export function parseInput(readLine) {
   const stringsCount = parseInt(readLine().trim(), 10);
 
@@ -23,6 +20,6 @@ export function parseInput(readLine) {
   return [strings, queries];
 }
 
-export function solve(input) {
+export function solve(solution, input) {
   return solution.apply(null, input);
 }

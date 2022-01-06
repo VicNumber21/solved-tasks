@@ -1,6 +1,3 @@
-import { solution } from './solution.js';
-
-
 export function parseInput(readLine) {
   const nk = readLine().split(' ');
   const n = parseInt(nk[0], 10);
@@ -17,6 +14,6 @@ export function parseInput(readLine) {
   return [n, k, r_q, c_q, obstacles];
 }
 
-export function solve(input) {
+export function solve(solution, input) {
   return [solution.apply(null, input)];
 }

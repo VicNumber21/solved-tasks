@@ -9,6 +9,7 @@ if (args.length === 0) {
 
 (async () => {
   const taskName = args[0];
+  const taskJsFile = args[2];
   let testNames = [];
 
   if (args[1]) {
@@ -18,7 +19,7 @@ if (args.length === 0) {
   const timeout = options.isDebug ? 9999999 : 10000;
   let timeoutId;
   await Promise.race([
-    taskMain(taskName, testNames)
+    taskMain(taskName, testNames, taskJsFile)
       .finally(() => {
         if (timeoutId) {
           clearTimeout(timeoutId)
@@ -42,23 +43,26 @@ import * as path from 'path'
 import fs from "fs";
 
 
-async function taskMain(taskName, testNames) {
+async function taskMain(taskName, testNames, taskJsFile) {
   const moduleDir = path.dirname(fileURLToPath(import.meta.url));
   const taskDir = path.join(moduleDir, 'tasks', taskName);
-  const taskModule = path.join(taskDir, 'index.js');
-  const module = await import(taskModule);
+  const taskIndexJs = path.join(taskDir, 'index.js');
+  const index = await import(taskIndexJs);
+  const taskSolutionJs = path.join(taskDir, taskJsFile || 'solution.js');
+  const module = await import(taskSolutionJs);
   const tests = await getTests(taskDir, testNames);
   let counters = { PASSED: 0, FAILED: 0};
 
   for (let test of tests) {
     const readLine = readTestInput(test.dir);
     const beforeParsing = process.hrtime.bigint();
-    const input = module.parseInput(readLine);
+    const input = index.parseInput(readLine);
     const afterParsing = process.hrtime.bigint();
-    const output = module.solve(input).map(x => x.toString());
+    const output = index.solve(module.solution, input).map(x => x.toString());
     const afterExecution = process.hrtime.bigint();
     const diff = checkOutput(test.dir, output);
     printResults({
+      solution: taskSolutionJs,
       testName: test.name,
       output: output,
       diff: diff,
@@ -125,6 +129,7 @@ function readLineFromArray(arr) {
 }
 
 function printResults(results) {
+  console.log(`JS: ${results.solution}`);
   console.log(`Name: ${results.testName}`);
 
   if (options.isDebug) {

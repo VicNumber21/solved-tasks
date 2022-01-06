@@ -1,6 +1,3 @@
-import { solution } from './solution.js';
-
-
 export function parseInput(readLine) {
   const input = [];
   const q = parseInt(readLine(), 10);
@@ -23,6 +20,6 @@ export function parseInput(readLine) {
   return input;
 }
 
-export function solve(input) {
+export function solve(solution, input) {
   return input.map(tree => solution(tree.vertices, tree.edges));
 }

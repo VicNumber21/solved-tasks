@@ -1,6 +1,3 @@
-import { solution } from './solution.js';
-
-
 export function parseInput(readLine) {
   const T = parseInt(readLine().trim(), 10);
   const tests = [];
@@ -25,6 +22,6 @@ export function parseInput(readLine) {
   return tests;
 }
 
-export function solve(tests) {
+export function solve(solution, tests) {
   return tests.reduce((res, test) => res.concat(solution.apply(null, test)), []);
 }
