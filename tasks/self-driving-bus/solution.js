@@ -82,7 +82,6 @@ function countByMapOnInterval(map, city, interval) {
     most.left = Math.min(most.left, rightValue.min);
     most.rightLeft = Math.min(most.rightLeft, rightValue.min);
     most.right = Math.max(most.right, rightValue.max);
-    if (!canGoLeft && most.left < left) break;
     if (right < most.right) continue;
 
     let prevLeftObj = leftMap.get(left);
