@@ -54,13 +54,10 @@ async function taskMain(taskName, testNames, taskJsFile) {
   let counters = { PASSED: 0, FAILED: 0};
 
   for (let test of tests) {
-    const readLine = readTestInput(test.dir);
-    const beforeParsing = process.hrtime.bigint();
-    const input = index.parseInput(readLine);
-    const afterParsing = process.hrtime.bigint();
+    const { input, beforeParsing, afterParsing } = await loadTestInput(test.dir, index.parseInput);
     const output = index.solve(module.solution, input).map(x => x.toString());
     const afterExecution = process.hrtime.bigint();
-    const diff = checkOutput(test.dir, output);
+    const diff = await checkOutput(test.dir, output);
     printResults({
       solution: taskSolutionJs,
       testName: test.name,
@@ -167,8 +164,40 @@ function printDiff(diff) {
   });
 }
 
-function checkOutput(testDir, actualOutput) {
-  const nextExpected = readTestOutput(testDir);
+async function loadTestInput(testDir, parseInput) {
+  let beforeParsing, input, afterParsing;
+
+  if (isTextInput(testDir)) {
+    const readLine = readTestInput(testDir);
+    beforeParsing = process.hrtime.bigint();
+    input = parseInput(readLine);
+    afterParsing = process.hrtime.bigint();
+  }
+  else {
+    beforeParsing = process.hrtime.bigint();
+    input = (await import(path.join(testDir, 'input.js'))).input;
+    afterParsing = process.hrtime.bigint();
+  }
+
+  return { input, beforeParsing, afterParsing };
+}
+
+function isTextInput(testDir) {
+  return fs.existsSync(path.join(testDir, 'input.txt'));
+}
+
+async function loadTestOutput(testDir) {
+  return isTextOutput(testDir) ?
+    readTestOutput(testDir) :
+    readLineFromArray((await import(path.join(testDir, 'output.js'))).output);
+}
+
+function isTextOutput(testDir) {
+  return fs.existsSync(path.join(testDir, 'output.txt'));
+}
+
+async function checkOutput(testDir, actualOutput) {
+  const nextExpected = await loadTestOutput(testDir);
   const nextActual = readLineFromArray(actualOutput);
   let diff = [];
   let expected = nextExpected();
