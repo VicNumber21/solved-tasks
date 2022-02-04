@@ -93,7 +93,7 @@ function countByDoubleCord(leftArea, rightArea, limit) {
     const qBranch = vBranchCords.get(query.branchName) || { arr: [], sorted: false };
     sort(qBranch);
     const qFullBranch = vArea.branches.get(query.branchName) || [];
-    const qBranchReachableCount = binarySearch(qBranch, query.x);
+    const qBranchReachableCount = binarySearch(qBranch.arr, query.x);
     const qBranchUnreachableCount = qFullBranch.length - qBranchReachableCount;
 
     count += vUnreachableCount - qBranchUnreachableCount;
