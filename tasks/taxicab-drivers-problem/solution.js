@@ -1,405 +1,250 @@
 export { solve as solution };
 
-const Area = {
-  H1V1: 0,
-  H2V1: 1,
-  H1V2: 2,
-  H2V2: 3,
-  Out: 4
+// I was close to the solution but did not find the right one
+// Below is 'work on mistakes' - rework of solution found in the Internet
+// It seems that in competition programming arrays are win condition
+// So I decided to try writing in this style
+function solve(hLimit, vLimit, junctions, edges) {
+  const graph = createJunctionsGraph(hLimit, vLimit, edges, junctions);
+  const centroids = graph.centroidSplit();
+  let reachableCount = 0;
+
+  for(const centroid of centroids) {
+    reachableCount += countReachable(graph, centroid);
+    graph.ctx.isCounted[centroid] = true;
+  }
+
+  const n = junctions.length;
+  const pairsCount = n * (n - 1) / 2;
+
+  return pairsCount - reachableCount;
+}
+
+function createJunctionsGraph(hLimit, vLimit, edges, junctions) {
+  const graph = new Graph(junctions.length);
+
+  for (const [v, u] of edges) {
+    const [ jv, ju ] = [ junctions[v - 1], junctions[u - 1] ];
+    const [ dx, dy ] = [ Math.abs(jv[0] - ju[0]), Math.abs(jv[1] - ju[1])];
+    graph[v].push({ v: u, dx, dy });
+    graph[u].push({ v, dx, dy })
+  }
+
+  graph.ctx.limit = { H: hLimit, V:vLimit };
+  graph.ctx.isCounted = new Array(graph.length).fill(false);
+
+  return graph;
+}
+
+function countReachable(graph, v) {
+  const vPoint = { x: 0, y:0 };
+  const allPoints = [[vPoint]];
+  const branchCounts = [];
+
+  for (const neighbor of graph[v]) {
+    const branchPoints = collectPoints(graph, neighbor, v, vPoint);
+    branchCounts.push(countReachablePoints(branchPoints, graph.ctx.limit))
+    allPoints.push(branchPoints);
+  }
+
+  const allCount = countReachablePoints(allPoints.flat(), graph.ctx.limit);
+
+  return allCount - branchCounts.sum();
+}
+
+function collectPoints(graph, { v, dx, dy }, prev, prevPoint, points = []) {
+  if (!graph.ctx.isCounted[v]) {
+    const {H, V} = graph.ctx.limit;
+    const vPoint = {x: prevPoint.x + dx, y: prevPoint.y + dy};
+
+    if (vPoint.x <= H && vPoint.y <= V) {
+      points.push(vPoint);
+
+      for (const neighbor of graph[v]) {
+        if (neighbor.v !== prev) {
+          collectPoints(graph, neighbor, v, vPoint, points);
+        }
+      }
+    }
+  }
+
+  return points;
+}
+
+const Bit = {
+  last: (v) => v & -v,
+  inc: (v) => v + Bit.last(v),
+  dec: (v) => v - Bit.last(v)
 };
 
-function solve(hLimit, vLimit, junctions, edges) {
-  let count = 0;
-  const graph = new Graph(edges);
-  const limit = { h: hLimit, hHalf: hLimit / 2, v: vLimit, vHalf: vLimit / 2  };
-  const crosses = graph.crosses().sort((c1, c2) => graph.neighbours(c2).size - graph.neighbours(c1).size);
-
-  for (const cross of crosses) {
-    if (graph.isCross(cross)) {
-      const areas = sortJunctions(graph, cross, junctions, limit);
-      const [ h1v1, h1v2 ] = [ areas[Area.H1V1], areas[Area.H1V2] ];
-      const [ h2v1, h2v2 ] = [ areas[Area.H2V1], areas[Area.H2V2] ];
-
-      count += countOut(areas);
-
-      count += countInAreaOnDifferentBranches(h2v1);
-      count += countInAreaOnDifferentBranches(h1v2);
-      count += countInAreaOnDifferentBranches(h2v2);
-
-      count += countBetweenAreasOnDifferentBranches(h2v1, h2v2);
-      count += countBetweenAreasOnDifferentBranches(h1v2, h2v2);
-
-      count += countBySingleCord(h1v1, h1v2, (p) => p.y, limit);
-      count += countBySingleCord(h1v1, h2v1, (p) => p.x, limit);
-
-      count += countByDoubleCord(h1v1, h2v2, limit);
-      count += countByDoubleCord(h1v2, h2v1, limit);
-
-      graph.removeVertex(cross);
-    }
+function incXCount(xBits, xBit) {
+  for (let bitIndex = xBit; bitIndex < xBits.length; bitIndex = Bit.inc(bitIndex)) {
+    ++xBits[bitIndex];
   }
-
-  const leaves = graph.leaves();
-
-  for (const leaf of leaves) {
-    if (graph.isLeaf(leaf)) {
-      count += countOnChain(graph, leaf, junctions, limit);
-    }
-  }
-
-  return count;
 }
 
-function countByDoubleCord(leftArea, rightArea, limit) {
-  let count = 0;
-  const [vArea, qArea] = [leftArea, rightArea].sort((a1, a2) => a1.vertices.length - a2.vertices.length);
+function queryXCount(xBits, xBit) {
+  let countX = 0;
+
+  for (let bitIndex = xBit; bitIndex > 0; bitIndex = Bit.dec(bitIndex)) {
+    countX += xBits[bitIndex];
+  }
+
+  return countX;
+}
+
+function countReachablePoints(points, { H, V }) {
+  let countWithDuplicates = 0;
   const order = (p1, p2) => p1.y !== p2.y ? p1.y - p2.y : p1.x - p2.x;
-  const vPoints = getPoints(vArea.vertices, vArea.ctx.junctions).sort(order);
-
-  const queries = qArea.vertices.map((v) => {
-    const q = createQuery(qArea.ctx.junctions[v], limit);
-    q.branchName = qArea.ctx.branchNames.get(v);
-    return q;
-  }).sort(order);
-
-  let vIndex = 0;
-  const vBranchCords = new Map();
-  const vCords = { arr: [], sorted: false };
-  const sort = (ctx) => {
-    if (!ctx.sorted) {
-      ctx.arr.sort();
-      ctx.sorted = true;
-    }
-  };
-
-  for (const query of queries) {
-    let vPoint = vPoints[vIndex];
-
-    while (vIndex < vPoints.length && vPoint.y <= query.y) {
-      vCords.arr.push(vPoint.x);
-      vCords.sorted = false;
-      const vBranchName = vArea.ctx.branchNames.get(vPoint.v);
-      const vBranch = vBranchCords.get(vBranchName) || { arr: [], sorted: false };
-      vBranch.arr.push(vPoint.x);
-      vBranch.sorted = false;
-      vBranchCords.set(vBranchName, vBranch);
-      vPoint = vPoints[++vIndex];
-    }
-
-    sort(vCords);
-    const vReachableCount = binarySearch(vCords.arr, query.x);
-    const vUnreachableCount = vArea.vertices.length - vReachableCount;
-
-    const qBranch = vBranchCords.get(query.branchName) || { arr: [], sorted: false };
-    sort(qBranch);
-    const qFullBranch = vArea.branches.get(query.branchName) || [];
-    const qBranchReachableCount = binarySearch(qBranch.arr, query.x);
-    const qBranchUnreachableCount = qFullBranch.length - qBranchReachableCount;
-
-    count += vUnreachableCount - qBranchUnreachableCount;
-  }
-
-  return count;
-}
-
-function countBySingleCord(closeArea, farArea, getCord, limit) {
-  let count = 0;
-  const [vArea, qArea] = [closeArea, farArea].sort((a1, a2) => a1.vertices.length - a2.vertices.length);
-  const vCords = getPoints(vArea.vertices, vArea.ctx.junctions).map(getCord).sort();
-  const vBranchCords = new Map();
-
-  for (const [branchName, vBranch] of vArea.branches) {
-    vBranchCords.set(branchName, getPoints(vBranch, vArea.ctx.junctions).map(getCord).sort());
-  }
-
-  const queries = qArea.vertices.map((v) => {
-    const q = createQuery(qArea.ctx.junctions[v], limit);
-    q.branchName = qArea.ctx.branchNames.get(v);
-    return q;
-  }).sort((p1, p2) => getCord(p1) - getCord(p2));
-
-  let vReachableCount = 0;
-  const vBranchReachableCounts = new Map();
-
-  for (const query of queries) {
-    vReachableCount = binarySearch(vCords, getCord(query), {firstIndex: vReachableCount});
-    const vUnreachableCount = vCords.length - vReachableCount;
-
-    const vBranch = vBranchCords.get(query.branchName) || [];
-    let vBranchReachableCount = vBranchReachableCounts.get(query.branchName) || 0;
-    vBranchReachableCount = binarySearch(vBranch, getCord(query), {firstIndex: vBranchReachableCount});
-    const vBranchUnreachableCount = vBranch.length - vBranchReachableCount;
-
-    count += vUnreachableCount - vBranchUnreachableCount;
-  }
-
-  return count;
-}
-
-function getPoints(vertices, junctions) {
-  return vertices.map((v) => {
-    const { x, y } = junctions[v];
-    return { v, x, y};
-  });
-}
-
-function createQuery(point, limit) {
-  return { x: limit.h - point.x, y: limit.v - point.y};
-}
-
-function countInAreaOnDifferentBranches(area) {
-  let count = 0;
-  let areaVerticesCount = area.vertices.length;
-
-  for (const [, branch] of area.branches) {
-    const othersCount = areaVerticesCount - branch.length;
-    count += branch.length * othersCount;
-    areaVerticesCount = othersCount;
-  }
-
-  return count;
-}
-
-function countBetweenAreasOnDifferentBranches(sourceArea, unreachableArea) {
-  let count = 0;
-  const unreachableAreaCount = unreachableArea.vertices.length;
-
-  for (const [branchName, sourceBranch] of sourceArea.branches) {
-    const unreachableBranch = unreachableArea.branches.get(branchName) || [];
-    const unreachableOthersCount = unreachableAreaCount - unreachableBranch.length;
-
-    count += sourceBranch.length * unreachableOthersCount;
-  }
-
-  return count;
-}
-
-function countOut(areas) {
-  let count = areas[Area.Out].vertices.length;
-  const inLimitAreas = areas.slice(Area.H1V1, Area.Out);
-
-  for (const area of inLimitAreas) {
-    count += countBetweenAreasOnDifferentBranches(area, areas[Area.Out]);
-  }
-
-  count += countInAreaOnDifferentBranches(areas[Area.Out]);
-
-  return count;
-}
-
-function sortJunctions(graph, root, junctions, limit) {
-  const ctx = {
-    branchNames: new Map(),
-    junctions: new Array(junctions.length)
-  };
-
-  const areas = [
-      { ctx: ctx, vertices: [], branches: new Map(), condition: (x, y) => x <= limit.hHalf && y <= limit.vHalf },
-      { ctx: ctx, vertices: [], branches: new Map(), condition: (x, y) => x <= limit.h && y <= limit.vHalf },
-      { ctx: ctx, vertices: [], branches: new Map(), condition: (x, y) => x <= limit.hHalf && y <= limit.v },
-      { ctx: ctx, vertices: [], branches: new Map(), condition: (x, y) => x <= limit.h && y <= limit.v },
-      { ctx: ctx, vertices: [], branches: new Map(), condition: () => true }
-    ];
-
-  graph.travers({
-    stack: [],
-    start: root,
-    visit: (v, prev) => {
-      const j = mapJunction(v, prev, junctions, ctx.junctions);
-      if (prev === undefined) { return }
-
-      const vBranchName = prev === root ? v : ctx.branchNames.get(prev);
-      ctx.branchNames.set(v, vBranchName);
-
-      for (const area of areas) {
-        if (area.condition(j.x, j.y)) {
-          area.vertices.push(v);
-          const vBranch = area.branches.get(vBranchName) || [];
-          vBranch.push(v);
-          area.branches.set(vBranchName, vBranch);
-          break;
-        }
-      }
-    }
-  });
-
-  return areas;
-}
-
-function mapJunction(v, prev, originalJunctions, mappedJunctions) {
-  const j = { x: 0, y: 0 };
-
-  if (prev !== undefined) {
-    const prevJ = originalJunctions[prev];
-    const prevXY = mappedJunctions[prev];
-    const vJ = originalJunctions[v];
-    j.x = prevXY.x + Math.abs(vJ[0] - prevJ[0]);
-    j.y = prevXY.y + Math.abs(vJ[1] - prevJ[1]);
-  }
-
-  mappedJunctions[v] = j;
-
-  return j;
-}
-
-function countOnChain(graph, root, junctions, limit) {
-  let count = 0;
-  let currentLimit = { h: limit.h, v: limit.v };
-  const mappedJunctions = new Array(junctions.length);
-  mappedJunctions[root] = { x: 0, y: 0};
-  let currentCount = 0;
-  const reachableVerticesCounts = [];
-  let currentRootIndex = 1;
-  const visited = [];
-
-  graph.travers({
-    stack: [],
-    start: root,
-    visit: (v, prev) => {
-      visited.push(v);
-      const j = mapJunction(v, prev, junctions, mappedJunctions);
-
-      while (j.x > currentLimit.h || j.y > currentLimit.v) {
-        reachableVerticesCounts.push(currentCount);
-        const currentRoot = visited[currentRootIndex++];
-        const { x, y } = mappedJunctions[currentRoot];
-        currentLimit = { h: x + limit.h, v: y + limit.v };
-      }
-
-      ++currentCount;
-    }
-  });
-
-  for (const reachableCount of reachableVerticesCounts) {
-    count += visited.length - reachableCount;
-  }
-
-  for (const v of visited) {
-    graph.removeVertex(v);
-  }
-
-  return count;
-}
-
-class Graph {
-  constructor(edges) {
-    this._adjLists = new Map();
-    this.addVertex(edges[0][0] - 1);
-
-    for (const [u, v] of edges) {
-      this.addEdge(u - 1, v - 1);
-      this.addEdge(v - 1, u - 1);
-    }
-  }
-
-  order() {
-    return this._adjLists.size;
-  }
-
-  neighbours(v) {
-    return  this._adjLists.get(v);
-  }
-
-  addVertex(v) {
-    if (!this._adjLists.has(v)) {
-      this._adjLists.set(v, new Set());
-    }
-  }
-
-  removeVertex(v) {
-    const vNeighbours = this.neighbours(v);
-
-    for (const neighbour of vNeighbours) {
-      this.removeEdge(neighbour, v);
-    }
-
-    this._adjLists.delete(v);
-  }
-
-  addEdge(u, v) {
-    this.addVertex(u);
-    const uNeighbours = this.neighbours(u);
-    uNeighbours.add(v);
-  }
-
-  removeEdge(u, v) {
-    const uNeighbours = this.neighbours(u);
-    uNeighbours.delete(v);
-  }
-
-  filter (condition) {
-    const vertices = [];
-
-    for (const [v] of this._adjLists) {
-      if (condition(v)) {
-        vertices.push(v);
-      }
-    }
-
-    return vertices;
-  }
-
-  leaves () {
-    return this.filter(this.isLeaf.bind(this));
-  }
-
-  isLeaf(v) {
-    const neighbours = this.neighbours(v);
-    return neighbours && neighbours.size === 1;
-  }
-
-  crosses () {
-    return this.filter(this.isCross.bind(this));
-  }
-
-  isCross(v) {
-    const neighbours = this.neighbours(v);
-    return neighbours && neighbours.size > 2;
-  }
-
-  travers({
-            stack,
-            start,
-            visit = (/* v, u */) => false
-          } = {}) {
-    const planned = new Set();
-    stack.push({ v: start });
-    planned.add(start);
-
-    while (stack.length > 0) {
-      const current = stack.pop();
-      const neighbours = this.neighbours(current.v);
-      visit(current.v, current.u);
-
-      for (const u of neighbours) {
-        if (!planned.has(u)) {
-          planned.add(u);
-          stack.push({ v: u, u: current.v});
-        }
-      }
-    }
-  }
-}
-
-function binarySearch(arr, value, {
-    firstIndex = 0,
-    lastIndex = arr.length - 1,
-    goRight = (a, v) => a <= v
-  } = {})
-{
-  let low = firstIndex;
-  let high = lastIndex;
-
-  while (low <= high) {
-    const mid = Math.ceil((low + high) / 2);
-
-    if (goRight(arr[mid], value)) {
-      low = mid + 1;
+  points.sort(order);
+  const queries = points.map((point) => ({ x: H - point.x, y: V - point.y})).sort(order);
+  const selfQueriesCount = queries.filter(({ x, y}) => x >= H / 2 && y >= V / 2).length;
+
+  const xs = points.map(({x}) => x).concat(queries.map(({x}) => x)).sortNumbers().uniqueInPlace();
+  const xBits = new Array(xs.length + 1).fill(0);
+  const xBitMap = new Map();
+  for (let i = 0; i < xs.length; ++i) { xBitMap.set(xs[i], i + 1); }
+
+  let pointIndex = 0;
+  let queryIndex = 0;
+
+  while (queryIndex < queries.length) {
+    const [ point, query ] = [ points[pointIndex], queries[queryIndex] ];
+
+    if (pointIndex < points.length && order(point, query) <= 0) {
+      incXCount(xBits, xBitMap.get(point.x));
+      ++pointIndex;
     }
     else {
-      high = mid - 1;
+      countWithDuplicates += queryXCount(xBits, xBitMap.get(query.x));
+      ++queryIndex;
     }
   }
 
-  return low;
+  return (countWithDuplicates - selfQueriesCount) / 2;
+}
+
+class Graph extends Array {
+  constructor(n, firstVertex = 1) {
+    super();
+    const graph = new Array(n + firstVertex);
+    graph.mapInPlace(() => []);
+    graph[0] = { firstVertex };
+    graph.__proto__ = Graph.prototype;
+
+    return graph;
+  }
+
+  get ctx() {
+    return this[0];
+  }
+
+  centroidSplit(start = 1) {
+    const isNotWall = new Array(this.length).fill(true);
+    const centroids = [];
+    const subtreeRoots = [start];
+    let i = 0;
+
+    while (centroids.length < this.length - this.ctx.firstVertex) {
+      const root = subtreeRoots[i++];
+      const centroid = this.centroid(root, isNotWall);
+      centroids.push(centroid);
+      isNotWall[centroid] = false;
+
+      for (const neighbor of this[centroid]) {
+        if (isNotWall[neighbor.v]) {
+          subtreeRoots.push(neighbor.v);
+        }
+      }
+    }
+
+    return centroids;
+  }
+
+  centroid(start = 1, isNotWall = []) {
+    this.fillSubtreeSizes(start, { isNotWall });
+
+    let centroid = start;
+    let maxNeighbor = start;
+    let isFound = false;
+    const subtreeLength = this.subtreeSizes[start];
+    const isVisited = new Set();
+
+    while (!isFound) {
+      isFound = true;
+      centroid = maxNeighbor;
+      isVisited.add(centroid);
+      let maxNeighborSubtree = 0;
+
+      for(const { v } of this[centroid]) {
+        if (isNotWall[v] && !isVisited.has(v)) {
+          if (2 * this.subtreeSizes[v] > subtreeLength) {
+            isFound = false;
+          }
+
+          if (this.subtreeSizes[v] > maxNeighborSubtree) {
+              maxNeighbor = v;
+              maxNeighborSubtree = this.subtreeSizes[v];
+          }
+        }
+      }
+
+      isFound = isFound && (2 * (subtreeLength - this.subtreeSizes[centroid]) < subtreeLength);
+    }
+
+    return centroid;
+  }
+
+  get subtreeSizes() {
+    if (!this.ctx.subtreeSizes) {
+      this.ctx.subtreeSizes = new Array(this.length);
+    }
+
+    return this.ctx.subtreeSizes;
+  }
+
+  fillSubtreeSizes(v, { prev , isNotWall = [] } = {}) {
+    this.subtreeSizes[v] = 1;
+
+    for (const neighbor of this[v]) {
+      if (isNotWall[neighbor.v] && neighbor.v !== prev) {
+        this.fillSubtreeSizes(neighbor.v, { prev: v, isNotWall});
+        this.subtreeSizes[v] += this.subtreeSizes[neighbor.v];
+      }
+    }
+  }
+}
+
+Array.prototype.mapInPlace = function (fn) {
+  for (let i = 0; i < this.length; ++i) {
+    this[i] = fn(this[i]);
+  }
+
+  return this;
+}
+
+Array.prototype.last = function () {
+  return this[this.length - 1];
+}
+
+Array.prototype.sum = function () {
+  return this.reduce((acc, x) => acc + x, 0);
+}
+
+Array.prototype.sortNumbers = function () {
+  return this.sort((x1, x2) => x1 - x2);
+}
+
+Array.prototype.uniqueInPlace = function () {
+  let last = this.length > 0 ? 0 : -1;
+
+  for (let index = 1; index < this.length; ++index) {
+    if (this[last] !== this[index]) {
+      this[++last] = this[index];
+    }
+  }
+
+  this.length = last + 1;
+
+  return this;
 }
