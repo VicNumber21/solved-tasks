@@ -12,7 +12,7 @@ if (args.length === 0) {
   const taskJsFile = args[2];
   let testNames = [];
 
-  if (args[1]) {
+  if (args[1] && args[1] !== '*') {
     testNames = args[1].split(',');
   }
 
