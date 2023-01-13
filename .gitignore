@@ -1,5 +1,7 @@
-#WebStorm settings
+#IDE settings
 .idea/
+.vscode/
+jsconfig.json
 .run/
 
 # Logs
